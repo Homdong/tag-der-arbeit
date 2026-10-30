@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Tag der Arbeit</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="1. Mai">
+<meta name="theme-color" content="#151515">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<style>
+  :root {
+    --bg: #151515;
+    --panel: #232323;
+    --btn: #2e2e2e;
+    --btn-down: #8dc63f;
+    --line: #444;
+    --text: #e9e9e9;
+    --muted: #9a9a9a;
+    --accent: #8dc63f;
+    --fire: #c8352b;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: var(--bg); color: var(--text);
+    font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+    overscroll-behavior: none;
+  }
+
+  /* Layout: Portrait = Spiel oben, Steuerung unten. Landscape = Steuerung links/rechts. */
+  #app {
+    position: fixed; inset: 0;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    display: grid;
+    grid-template-areas: "game game" "pad fire";
+    grid-template-rows: auto 1fr;
+    grid-template-columns: 1fr 1fr;
+  }
+  @media (orientation: landscape) {
+    #app {
+      grid-template-areas: "pad game fire";
+      grid-template-rows: 1fr;
+      grid-template-columns: 1fr auto 1fr;
+    }
+  }
+
+  #game {
+    grid-area: game;
+    position: relative;
+    background: #f7f7f7;
+    aspect-ratio: 3 / 2;
+    width: 100%;
+    max-height: 100%;
+    margin: 0 auto;
+  }
+  @media (orientation: landscape) {
+    #game { height: 100%; width: auto; }
+  }
+  #game ruffle-player { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+  .zone { display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 0; padding: 12px; }
+  #padzone { grid-area: pad; }
+  #firezone { grid-area: fire; flex-direction: column; gap: 14px; }
+
+  #dpad {
+    --s: min(40vmin, 170px);
+    width: var(--s); height: var(--s);
+    position: relative; touch-action: none;
+  }
+  #dpad .arm {
+    position: absolute; background: var(--btn); border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted); font-size: calc(var(--s) * 0.13);
+    transition: background .05s;
+  }
+  #dpad .arm.on { background: var(--btn-down); color: #111; }
+  #dpad .up    { left: 33.33%; top: 0;      width: 33.34%; height: 36%; border-radius: 10px 10px 0 0; border-bottom: 0; }
+  #dpad .down  { left: 33.33%; bottom: 0;   width: 33.34%; height: 36%; border-radius: 0 0 10px 10px; border-top: 0; }
+  #dpad .left  { top: 33.33%;  left: 0;     height: 33.34%; width: 36%; border-radius: 10px 0 0 10px; border-right: 0; }
+  #dpad .right { top: 33.33%;  right: 0;    height: 33.34%; width: 36%; border-radius: 0 10px 10px 0; border-left: 0; }
+  #dpad .hub   { position: absolute; left: 33.33%; top: 33.33%; width: 33.34%; height: 33.34%; background: var(--btn); }
+
+  #fire {
+    --s: min(26vmin, 112px);
+    width: var(--s); height: var(--s); border-radius: 50%;
+    background: var(--fire); border: 3px solid #7d1d17; color: #fff;
+    font-weight: 700; font-size: calc(var(--s) * 0.15); letter-spacing: .02em;
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    touch-action: none; box-shadow: 0 4px 0 #7d1d17;
+  }
+  #fire.on { transform: translateY(3px); box-shadow: 0 1px 0 #7d1d17; filter: brightness(1.15); }
+  .hint { color: var(--muted); font-size: 12px; text-align: center; max-width: 160px; }
+
+  /* Startbildschirm */
+  #start {
+    position: fixed; inset: 0; z-index: 10;
+    background: var(--bg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+    padding: 24px calc(16px + env(safe-area-inset-right)) 24px calc(16px + env(safe-area-inset-left));
+    text-align: center;
+  }
+  #start h1 { margin: 0; font-size: 34px; line-height: 1.05; letter-spacing: .01em; }
+  #start h1 span { color: var(--accent); display: block; font-size: 15px; letter-spacing: .2em; text-transform: uppercase; margin-bottom: 6px; }
+  #play {
+    appearance: none; border: 0; border-radius: 12px; cursor: pointer;
+    background: var(--fire); color: #fff; font-family: inherit; font-weight: 700; font-size: 22px; line-height: 1; padding: 16px 40px;
+    box-shadow: 0 4px 0 #7d1d17;
+  }
+  #play:active { transform: translateY(3px); box-shadow: 0 1px 0 #7d1d17; }
+  #install { display: none; color: var(--muted); font-size: 14px; max-width: 340px; }
+  #install b { color: var(--text); }
+  .small { color: var(--muted); font-size: 12px; max-width: 360px; }
+</style>
+</head>
+<body>
+
+<div id="start">
+  <h1><span>Berlin Chaos</span>Tag der Arbeit</h1>
+  <button id="play" type="button">Spielen</button>
+  <p id="install">Für Vollbild und Offline-Spielen: in Safari auf <b>Teilen</b> tippen, dann <b>Zum Home-Bildschirm</b>.</p>
+  <p class="small">Steuerkreuz zum Laufen, roter Knopf gedrückt halten zum Werfen und Anzünden. Querformat empfohlen.</p>
+</div>
+
+<div id="app">
+  <div class="zone" id="padzone">
+    <div id="dpad" aria-label="Steuerkreuz">
+      <div class="arm up">▲</div>
+      <div class="arm down">▼</div>
+      <div class="arm left">◀</div>
+      <div class="arm right">▶</div>
+      <div class="hub"></div>
+    </div>
+  </div>
+  <div id="game"></div>
+  <div class="zone" id="firezone">
+    <div id="fire" aria-label="Werfen">WERFEN</div>
+    <div class="hint">gedrückt halten</div>
+  </div>
+</div>
+
+<script src="ruffle/ruffle.js"></script>
+<script>
+(() => {
+  const KEYS = {
+    up:    { key: "ArrowUp",    code: "ArrowUp",    keyCode: 38 },
+    down:  { key: "ArrowDown",  code: "ArrowDown",  keyCode: 40 },
+    left:  { key: "ArrowLeft",  code: "ArrowLeft",  keyCode: 37 },
+    right: { key: "ArrowRight", code: "ArrowRight", keyCode: 39 },
+    fire:  { key: " ",          code: "Space",      keyCode: 32 },
+  };
+
+  let player = null;
+  const held = new Set();
+
+  function sendKey(type, name) {
+    if (!player) return;
+    const k = KEYS[name];
+    const ev = new KeyboardEvent(type, { key: k.key, code: k.code, bubbles: true, cancelable: true });
+    // Ältere Flash-Logik liest keyCode; der Konstruktor setzt ihn nicht.
+    Object.defineProperty(ev, "keyCode", { get: () => k.keyCode });
+    Object.defineProperty(ev, "which", { get: () => k.keyCode });
+    player.dispatchEvent(ev);
+  }
+  function press(name)   { if (!held.has(name)) { held.add(name); sendKey("keydown", name); } }
+  function release(name) { if (held.has(name))  { held.delete(name); sendKey("keyup", name); } }
+
+  // Steuerkreuz: 8 Richtungen, Finger darf über das Kreuz gleiten.
+  const dpad = document.getElementById("dpad");
+  const arms = { up: dpad.querySelector(".up"), down: dpad.querySelector(".down"),
+                 left: dpad.querySelector(".left"), right: dpad.querySelector(".right") };
+  let dpadPointer = null;
+
+  function setDirs(dirs) {
+    for (const d of ["up", "down", "left", "right"]) {
+      if (dirs.has(d)) press(d); else release(d);
+      arms[d].classList.toggle("on", dirs.has(d));
+    }
+  }
+  function dirsFromPoint(x, y) {
+    const r = dpad.getBoundingClientRect();
+    const dx = x - (r.left + r.width / 2);
+    const dy = y - (r.top + r.height / 2);
+    const dirs = new Set();
+    if (Math.hypot(dx, dy) < r.width * 0.12) return dirs;
+    const sector = Math.round(Math.atan2(dy, dx) / (Math.PI / 4));
+    const map = { 0: ["right"], 1: ["right", "down"], 2: ["down"], 3: ["down", "left"],
+                  4: ["left"], "-4": ["left"], "-3": ["left", "up"], "-2": ["up"], "-1": ["up", "right"] };
+    for (const d of map[sector]) dirs.add(d);
+    return dirs;
+  }
+  dpad.addEventListener("pointerdown", e => {
+    e.preventDefault();
+    dpadPointer = e.pointerId;
+    try { dpad.setPointerCapture(e.pointerId); } catch {}
+    setDirs(dirsFromPoint(e.clientX, e.clientY));
+  });
+  dpad.addEventListener("pointermove", e => {
+    if (e.pointerId !== dpadPointer) return;
+    setDirs(dirsFromPoint(e.clientX, e.clientY));
+  });
+  for (const t of ["pointerup", "pointercancel", "lostpointercapture"]) {
+    dpad.addEventListener(t, e => {
+      if (e.pointerId !== dpadPointer) return;
+      dpadPointer = null;
+      setDirs(new Set());
+    });
+  }
+
+  const fire = document.getElementById("fire");
+  fire.addEventListener("pointerdown", e => {
+    e.preventDefault();
+    try { fire.setPointerCapture(e.pointerId); } catch {}
+    fire.classList.add("on");
+    press("fire");
+  });
+  for (const t of ["pointerup", "pointercancel", "lostpointercapture"]) {
+    fire.addEventListener(t, () => { fire.classList.remove("on"); release("fire"); });
+  }
+
+  // Wenn die App in den Hintergrund geht, keine Taste "hängen" lassen.
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) { setDirs(new Set()); fire.classList.remove("on"); release("fire"); }
+  });
+  document.addEventListener("gesturestart", e => e.preventDefault());
+  document.addEventListener("dblclick", e => e.preventDefault());
+
+  const standalone = window.navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (isIOS && !standalone) document.getElementById("install").style.display = "block";
+
+  window.RufflePlayer = window.RufflePlayer || {};
+  window.RufflePlayer.config = { publicPath: "ruffle/", polyfills: false };
+
+  // Start per Antippen: iOS gibt den Ton erst nach einer Berührung frei.
+  document.getElementById("play").addEventListener("click", () => {
+    document.getElementById("start").remove();
+    player = window.RufflePlayer.newest().createPlayer();
+    document.getElementById("game").appendChild(player);
+    player.ruffle().load({
+      url: "swf/preloader.swf",
+      autoplay: "on",
+      unmuteOverlay: "hidden",
+      splashScreen: false,
+      contextMenu: "off",
+      letterbox: "on",
+      scale: "showAll",
+      forceScale: true,
+      backgroundColor: "#F7F7F7",
+      openUrlMode: "deny",
+      allowNetworking: "all",
+    });
+    window.player = player;
+  });
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }
+})();
+</script>
+</body>
+</html>

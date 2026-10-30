@@ -1,0 +1,14 @@
+{
+  "name": "Berlin Chaos – Tag der Arbeit",
+  "short_name": "1. Mai",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#151515",
+  "theme_color": "#151515",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
