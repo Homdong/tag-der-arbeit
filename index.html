@@ -38,8 +38,8 @@
     position: fixed; inset: 0;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     display: grid;
-    grid-template-areas: "game game" "pad fire";
-    grid-template-rows: auto 1fr;
+    grid-template-areas: "game game" "hud hud" "pad fire";
+    grid-template-rows: auto auto 1fr;
     grid-template-columns: 1fr 1fr;
   }
   @media (orientation: landscape) {
@@ -63,6 +63,31 @@
     #game { height: 100%; width: auto; }
   }
   #game ruffle-player { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+  /* Hochformat während der Runde: nur Karte + Pause-Leiste zeigen (Bühne 140,77 – 460,348),
+     Steine/Zeit/Punkte werden darunter gespiegelt. */
+  #hud { grid-area: hud; display: none; }
+  @media (orientation: portrait) {
+    #app.ingame #game { aspect-ratio: 320 / 271; overflow: hidden; }
+    #app.ingame #game ruffle-player {
+      right: auto; bottom: auto;
+      width: calc(100% * 600 / 320);
+      height: calc(100% * 400 / 271);
+      left: calc(-100% * 140 / 320);
+      top: calc(-100% * 77 / 271);
+    }
+    #app.ingame #hud {
+      display: flex; align-items: center; justify-content: space-around;
+      background: #e6e6e6; padding: 6px 8px 10px;
+      border-radius: 0 0 14px 14px;
+    }
+  }
+  @media (orientation: portrait) {
+    #dpad { --s: min(48vw, 210px); }
+    #fire { --s: min(32vw, 140px); }
+  }
+  #hud canvas { height: 52px; width: auto; image-rendering: pixelated; }
+  #hud canvas.stones { height: 64px; }
 
   .zone { display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 0; padding: 12px; }
   #padzone { grid-area: pad; }
@@ -138,6 +163,11 @@
     </div>
   </div>
   <div id="game"></div>
+  <div id="hud">
+    <canvas class="stones" data-src="34,132,78,58"></canvas>
+    <canvas data-src="492,120,70,38"></canvas>
+    <canvas data-src="492,172,70,38"></canvas>
+  </div>
   <div class="zone" id="firezone">
     <div id="fire" aria-label="Werfen">WERFEN</div>
     <div class="hint">gedrückt halten</div>
@@ -247,6 +277,7 @@
       autoplay: "on",
       unmuteOverlay: "hidden",
       splashScreen: false,
+      preferredRenderer: "canvas",
       base: new URL("htm/", location.href).href,
       contextMenu: "off",
       letterbox: "on",
@@ -257,7 +288,45 @@
       allowNetworking: "all",
     });
     window.player = player;
+    requestAnimationFrame(tick);
   });
+
+  // Erkennt die Spielrunde am Rahmen um die Karte und spiegelt die Anzeigen.
+  const app = document.getElementById("app");
+  const hud = [...document.querySelectorAll("#hud canvas")].map(c => {
+    const [x, y, w, h] = c.dataset.src.split(",").map(Number);
+    return { c, ctx: c.getContext("2d"), x, y, w, h };
+  });
+  const FRAME_PIXELS = [
+    [138, 200, 0x3d], [300, 75, 0x3d],   // dunkler Kartenrand
+    [100, 200, 0xe6], [480, 200, 0xe6], [300, 52, 0xe6],  // hellgrauer Rahmen
+  ];
+  let frameCount = 0;
+
+  function stageCanvas() {
+    return player && player.shadowRoot && player.shadowRoot.querySelector("canvas");
+  }
+  function inRound(cv, k) {
+    const ctx = cv.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return false;
+    return FRAME_PIXELS.every(([x, y, v]) => {
+      const d = ctx.getImageData(Math.round(x * k), Math.round(y * k), 1, 1).data;
+      return Math.abs(d[0] - v) < 10 && Math.abs(d[1] - v) < 10 && Math.abs(d[2] - v) < 10;
+    });
+  }
+  function tick() {
+    requestAnimationFrame(tick);
+    const cv = stageCanvas();
+    if (!cv || !cv.width) return;
+    const k = cv.width / 600;
+    if (frameCount++ % 15 === 0) app.classList.toggle("ingame", inRound(cv, k));
+    if (!app.classList.contains("ingame") || hud[0].c.offsetParent === null) return;
+    for (const h of hud) {
+      const w = Math.round(h.w * k), hh = Math.round(h.h * k);
+      if (h.c.width !== w || h.c.height !== hh) { h.c.width = w; h.c.height = hh; }
+      h.ctx.drawImage(cv, h.x * k, h.y * k, h.w * k, h.h * k, 0, 0, w, hh);
+    }
+  }
 
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("sw.js").catch(() => {});
