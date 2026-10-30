@@ -1,5 +1,5 @@
 // Speichert das Spiel nach dem ersten Start, damit es offline läuft.
-const CACHE = "tag-der-arbeit-v1";
+const CACHE = "tag-der-arbeit-v2";
 const CORE = [
   "./",
   "index.html",
@@ -10,8 +10,7 @@ const CORE = [
   "ruffle/ruffle.js",
   "ruffle/core.ruffle.16d61072ac7fdc4d5013.js",
   "ruffle/core.ruffle.994eeef0a471a88cd0e3.js",
-  "swf/preloader.swf",
-  "swf/main.swf",
+  "swf/main-direct.swf",
   "swf/game.swf",
 ];
 
