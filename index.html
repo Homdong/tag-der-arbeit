@@ -6,21 +6,22 @@
 <title>Tag der Arbeit</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="1. Mai">
-<meta name="theme-color" content="#151515">
+<meta name="theme-color" content="#f7f7f7">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <style>
   :root {
-    --bg: #151515;
-    --panel: #232323;
+    /* Hell wie der Rahmen des Originalspiels */
+    --bg: #f7f7f7;
+    --panel: #e6e6e6;
     --btn: #2e2e2e;
     --btn-down: #8dc63f;
-    --line: #444;
-    --text: #e9e9e9;
-    --muted: #9a9a9a;
+    --line: #1c1c1c;
+    --text: #222;
+    --muted: #8a8a8a;
     --accent: #8dc63f;
     --fire: #c8352b;
   }
@@ -38,9 +39,9 @@
     position: fixed; inset: 0;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     display: grid;
-    grid-template-areas: "game game" "hud hud" "pad fire";
-    grid-template-rows: auto auto 1fr;
-    grid-template-columns: 1fr 1fr;
+    grid-template-areas: "game game" "pause pause" "hud hud" "pad fire";
+    grid-template-rows: auto auto auto 1fr;
+    grid-template-columns: 1.25fr 1fr;
   }
   @media (orientation: landscape) {
     #app {
@@ -64,30 +65,43 @@
   }
   #game ruffle-player { position: absolute; inset: 0; width: 100%; height: 100%; }
 
-  /* Hochformat während der Runde: nur Karte + Pause-Leiste zeigen (Bühne 140,77 – 460,348),
-     Steine/Zeit/Punkte werden darunter gespiegelt. */
-  #hud { grid-area: hud; display: none; }
+  /* Hochformat während der Runde: nur die Karte zeigen (Bühne 140,77 – 460,317).
+     Pause-Knopf und Steine/Zeit/Punkte liegen darunter. */
+  #pause, #hud { display: none; }
   @media (orientation: portrait) {
-    #app.ingame #game { aspect-ratio: 320 / 271; overflow: hidden; }
+    #app.ingame #game { aspect-ratio: 320 / 240; overflow: hidden; }
     #app.ingame #game ruffle-player {
       right: auto; bottom: auto;
       width: calc(100% * 600 / 320);
-      height: calc(100% * 400 / 271);
+      height: calc(100% * 400 / 240);
       left: calc(-100% * 140 / 320);
-      top: calc(-100% * 77 / 271);
+      top: calc(-100% * 77 / 240);
     }
-    #app.ingame #hud {
-      display: flex; align-items: center; justify-content: space-around;
-      background: #e6e6e6; padding: 6px 8px 10px;
-      border-radius: 0 0 14px 14px;
-    }
+    #app.ingame #pause { display: block; }
+    #app.ingame #hud { display: grid; }
+    #dpad { --s: min(50vw, 220px); }
+    #fire { --s: min(30vw, 130px); }
   }
-  @media (orientation: portrait) {
-    #dpad { --s: min(48vw, 210px); }
-    #fire { --s: min(32vw, 140px); }
+  #pause {
+    grid-area: pause;
+    appearance: none; margin: 8px 8px 0; height: 36px;
+    background: #9ed017; color: #2a3a05; border: 2px solid #5d7a0d; border-radius: 4px;
+    font-family: inherit; font-size: 16px; font-weight: 600; letter-spacing: .03em;
+    touch-action: manipulation;
   }
-  #hud canvas { height: 52px; width: auto; image-rendering: pixelated; }
-  #hud canvas.stones { height: 64px; }
+  #pause:active { filter: brightness(.9); }
+  #pause.on { background: #f2c94c; border-color: #a07d12; color: #3a2c00; }
+  #hud {
+    grid-area: hud;
+    grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 8px 0;
+  }
+  #hud .panel {
+    background: var(--panel); border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 10px; min-height: 0;
+  }
+  #hud canvas { width: auto; height: 118px; max-width: 100%; image-rendering: pixelated; }
+  #hud canvas.stones { height: 86px; }
 
   .zone { display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 0; padding: 12px; }
   #padzone { grid-area: pad; }
@@ -163,10 +177,10 @@
     </div>
   </div>
   <div id="game"></div>
+  <button id="pause" type="button">Pause</button>
   <div id="hud">
-    <canvas class="stones" data-src="34,132,78,58"></canvas>
-    <canvas data-src="492,120,70,38"></canvas>
-    <canvas data-src="492,172,70,38"></canvas>
+    <div class="panel"><canvas class="stones" data-src="34,132,78,58"></canvas></div>
+    <div class="panel"><canvas data-src="492,120,70,92"></canvas></div>
   </div>
   <div class="zone" id="firezone">
     <div id="fire" aria-label="Werfen">WERFEN</div>
@@ -253,9 +267,23 @@
     fire.addEventListener(t, () => { fire.classList.remove("on"); release("fire"); });
   }
 
-  // Wenn die App in den Hintergrund geht, keine Taste "hängen" lassen.
+  // Eigener Pause-Knopf: Ruffle nimmt keine künstlichen Klicks an, daher wird der ganze Emulator angehalten.
+  const pauseBtn = document.getElementById("pause");
+  function setPaused(on) {
+    if (!player) return;
+    const api = player.ruffle();
+    if (on) api.suspend(); else api.resume();
+    pauseBtn.textContent = on ? "Weiter" : "Pause";
+    pauseBtn.classList.toggle("on", on);
+  }
+  pauseBtn.addEventListener("click", () => setPaused(!pauseBtn.classList.contains("on")));
+
+  // Wenn die App in den Hintergrund geht: keine Taste "hängen" lassen und die Runde anhalten.
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden) { setDirs(new Set()); fire.classList.remove("on"); release("fire"); }
+    if (document.hidden) {
+      setDirs(new Set()); fire.classList.remove("on"); release("fire");
+      if (app.classList.contains("ingame")) setPaused(true);
+    }
   });
   document.addEventListener("gesturestart", e => e.preventDefault());
   document.addEventListener("dblclick", e => e.preventDefault());
@@ -297,9 +325,12 @@
     const [x, y, w, h] = c.dataset.src.split(",").map(Number);
     return { c, ctx: c.getContext("2d"), x, y, w, h };
   });
+  // Nur Stellen mitten in einfarbigen Flächen, damit Rundung bei jeder Zoomstufe passt.
   const FRAME_PIXELS = [
-    [138, 200, 0x3d], [300, 75, 0x3d],   // dunkler Kartenrand
-    [100, 200, 0xe6], [480, 200, 0xe6], [300, 52, 0xe6],  // hellgrauer Rahmen
+    [100, 200, [0xe6, 0xe6, 0xe6]], [480, 200, [0xe6, 0xe6, 0xe6]],  // Seitenteile
+    [300, 52, [0xe6, 0xe6, 0xe6]], [300, 322, [0xe6, 0xe6, 0xe6]],   // über und unter der Karte
+    [300, 332, [0x9e, 0xd0, 0x17]],                                  // grüner Pause-Knopf
+    [5, 200, [0xf7, 0xf7, 0xf7]],                                    // Hintergrund
   ];
   let frameCount = 0;
 
@@ -309,9 +340,9 @@
   function inRound(cv, k) {
     const ctx = cv.getContext("2d", { willReadFrequently: true });
     if (!ctx) return false;
-    return FRAME_PIXELS.every(([x, y, v]) => {
+    return FRAME_PIXELS.every(([x, y, rgb]) => {
       const d = ctx.getImageData(Math.round(x * k), Math.round(y * k), 1, 1).data;
-      return Math.abs(d[0] - v) < 10 && Math.abs(d[1] - v) < 10 && Math.abs(d[2] - v) < 10;
+      return rgb.every((v, i) => Math.abs(d[i] - v) < 12);
     });
   }
   function tick() {
@@ -319,7 +350,15 @@
     const cv = stageCanvas();
     if (!cv || !cv.width) return;
     const k = cv.width / 600;
-    if (frameCount++ % 15 === 0) app.classList.toggle("ingame", inRound(cv, k));
+    if (frameCount++ % 15 === 0) {
+      app.classList.toggle("ingame", inRound(cv, k));
+      // Auch Ruffles eigener Play-Knopf über der Karte setzt fort.
+      const paused = !player.ruffle().isPlaying;
+      if (paused !== pauseBtn.classList.contains("on")) {
+        pauseBtn.textContent = paused ? "Weiter" : "Pause";
+        pauseBtn.classList.toggle("on", paused);
+      }
+    }
     if (!app.classList.contains("ingame") || hud[0].c.offsetParent === null) return;
     for (const h of hud) {
       const w = Math.round(h.w * k), hh = Math.round(h.h * k);
